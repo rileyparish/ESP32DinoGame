@@ -83,40 +83,8 @@ void setup() {
     }
 }
 
-// read from the pins to determine state
-void updateInputs(){
-    // update digital inputs
-    for(int i = 0; i < NUM_DIGITAL_INPUTS; i++){
-        // if the current reading of the pin does not match the current "active" state in storage, then mark this input as needing an update
-        if(digitalInputs[i].isActive && digitalRead(digitalInputs[i].digitalPin) == HIGH ){
-            // this means that a key is being pressed, but the pin has stopped receiving electricity. The input and output are out of sync and need an update.
-            digitalInputs[i].isActive = false;
-            digitalInputs[i].stateNeedsUpdate = true;
-        }
-        if(!digitalInputs[i].isActive && digitalRead(digitalInputs[i].digitalPin) == LOW){
-            // this means that no key is currently being pressed, but the pin has started receiving electricity. The input and output are out of sync and need an update.
-            digitalInputs[i].isActive = true;
-            digitalInputs[i].stateNeedsUpdate = true;
-        }
-    }
-
-    // update capacative inputs
-    for(int i = 0; i < NUM_TOUCH_INPUTS; i++){        
-        if(touchInputs[i].isActive && touchRead(touchInputs[i].capacitivePin) > ACTIVE_THRESHOLD){
-            // this means that a key is currently being pressed, but a touch is no longer being detected. The key presses are not in line with the state of the device and need an update
-            touchInputs[i].isActive = false;
-            touchInputs[i].stateNeedsUpdate = true;
-        }
-        if(!touchInputs[i].isActive && touchRead(touchInputs[i].capacitivePin) < ACTIVE_THRESHOLD){
-            // this means that no key currently being pressed, but a touch has been registered. The key presses are not in line with the state of the device and need an update
-            touchInputs[i].isActive = true;
-            touchInputs[i].stateNeedsUpdate = true;
-        }
-    }
-}
-
 // update the keystrokes to match the state of the inputs
-void updateKeystrokes(){
+void updateDigitalKeystrokes(){
     // for each key, press or release keys based on whether the pin is active or not
     for(int i = 0; i < NUM_DIGITAL_INPUTS; i++){
         // if the state of this input hasn't changed from the previous iteration, it doesn't need an update.
@@ -131,7 +99,9 @@ void updateKeystrokes(){
             digitalInputs[i].stateNeedsUpdate = false;
         }
     }
+}
 
+void updateTouchKeystrokes(){
     // for each key, press or release keys based on whether the plate is being touched
     for(int i = 0; i < NUM_TOUCH_INPUTS; i++){
         // if the state of this input hasn't changed from the previous iteration, it doesn't need an update.
@@ -144,7 +114,42 @@ void updateKeystrokes(){
             // now the state of the pin and the state of the keyboard output are correctly synced. No updates are needed for this input
             touchInputs[i].stateNeedsUpdate = false;
         }
-        
+    }
+}
+
+// read from the pins to determine state
+void updateInputs(){
+    // update digital inputs
+    for(int i = 0; i < NUM_DIGITAL_INPUTS; i++){
+        // if the current reading of the pin does not match the current "active" state in storage, then mark this input as needing an update
+        if(digitalInputs[i].isActive && digitalRead(digitalInputs[i].digitalPin) == HIGH ){
+            // this means that a key is being pressed, but the pin has stopped receiving electricity. The input and output are out of sync and need an update.
+            digitalInputs[i].isActive = false;
+            digitalInputs[i].stateNeedsUpdate = true;
+            updateDigitalKeystrokes();
+        }
+        if(!digitalInputs[i].isActive && digitalRead(digitalInputs[i].digitalPin) == LOW){
+            // this means that no key is currently being pressed, but the pin has started receiving electricity. The input and output are out of sync and need an update.
+            digitalInputs[i].isActive = true;
+            digitalInputs[i].stateNeedsUpdate = true;
+            updateDigitalKeystrokes();
+        }
+    }
+
+    // update capacative inputs
+    for(int i = 0; i < NUM_TOUCH_INPUTS; i++){        
+        if(touchInputs[i].isActive && touchRead(touchInputs[i].capacitivePin) > ACTIVE_THRESHOLD){
+            // this means that a key is currently being pressed, but a touch is no longer being detected. The key presses are not in line with the state of the device and need an update
+            touchInputs[i].isActive = false;
+            touchInputs[i].stateNeedsUpdate = true;
+            updateTouchKeystrokes();
+        }
+        if(!touchInputs[i].isActive && touchRead(touchInputs[i].capacitivePin) < ACTIVE_THRESHOLD){
+            // this means that no key currently being pressed, but a touch has been registered. The key presses are not in line with the state of the device and need an update
+            touchInputs[i].isActive = true;
+            touchInputs[i].stateNeedsUpdate = true;
+            updateTouchKeystrokes();
+        }
     }
 }
 
@@ -153,7 +158,6 @@ void loop() {
     if(bleKeyboard.isConnected()){
         digitalWrite(BUILTIN_LED, HIGH);
         updateInputs();
-        updateKeystrokes();
     }else{
         digitalWrite(BUILTIN_LED, LOW);
     }    
