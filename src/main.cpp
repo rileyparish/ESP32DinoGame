@@ -42,7 +42,7 @@ DigitalInput digitalInputs[NUM_DIGITAL_INPUTS];
 // declare touch inputs
 const int NUM_TOUCH_INPUTS = 1;
 uint8_t touchPins[NUM_TOUCH_INPUTS] = {T5};  // corresponds to pin D12 on board
-const int ACTIVE_THRESHOLD = 9; // Any reading below this value will register as a capacitive touch. Neutral reading is 11, pressed is 6-7.
+const int ACTIVE_THRESHOLD = 8; // Any reading below this value will register as a capacitive touch. Neutral reading is 9, pressed is 6-7.
 
 // this list holds the information for each of the 5 finger inputs
 TouchInput touchInputs[NUM_TOUCH_INPUTS];
@@ -138,7 +138,7 @@ void updateInputs(){
 
     // update capacative inputs
     for(int i = 0; i < NUM_TOUCH_INPUTS; i++){        
-        if(touchInputs[i].isActive && touchRead(touchInputs[i].capacitivePin) > ACTIVE_THRESHOLD){
+        if(touchInputs[i].isActive && touchRead(touchInputs[i].capacitivePin) >= ACTIVE_THRESHOLD){
             // this means that a key is currently being pressed, but a touch is no longer being detected. The key presses are not in line with the state of the device and need an update
             touchInputs[i].isActive = false;
             touchInputs[i].stateNeedsUpdate = true;
@@ -160,5 +160,5 @@ void loop() {
         updateInputs();
     }else{
         digitalWrite(BUILTIN_LED, LOW);
-    }    
+    }
 }
