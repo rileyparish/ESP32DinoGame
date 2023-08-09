@@ -11,7 +11,7 @@ Thanks, and have fun! :)
 
 class DigitalInput {
     public:
-        uint8_t digitalPin;  // the digital pin that is assigned to this finger     
+        uint8_t analogPin;  // the digital pin that is assigned to this finger     
         bool isActive = false;      // whether electricity is flowing to the pin or not
         uint8_t letter;
         bool stateNeedsUpdate = false;   // stores whether the state of this input has changed from the previous iteration
@@ -33,11 +33,13 @@ BleKeyboard bleKeyboard;
 // since this script takes control of the keyboard, I want to be able to disable it. The start pin must read LOW before the ESP32 can control the keyboard.
 const int START_PIN = 0;       // BOOT button as labeled on the board
 
-// declare digital inputs (I only expect to use one, but this way the code can be easily adapted to add more)
-const int NUM_DIGITAL_INPUTS = 1;
-uint8_t digitalPins[NUM_DIGITAL_INPUTS] = {18};
+// declare force inputs (I only expect to use one, but this way the code can be easily adapted to add more)
+const int NUM_FORCE_INPUTS = 1;
+uint8_t forcePins[NUM_FORCE_INPUTS] = {36};
 
-DigitalInput digitalInputs[NUM_DIGITAL_INPUTS];
+DigitalInput forceInputs[NUM_FORCE_INPUTS];
+const int FORCE_PRESS_THRESHOLD = 50;
+const int FORCE_RELEASE_THRESHOLD = 20;
 
 // declare touch inputs
 const int NUM_TOUCH_INPUTS = 1;
@@ -64,13 +66,13 @@ void setup() {
         }
     }
 
-    // init digital inputs:
-    for(int i = 0; i< NUM_DIGITAL_INPUTS; i++){
-        pinMode(digitalPins[i], INPUT_PULLUP);
-    }
-    for(int i = 0; i < NUM_DIGITAL_INPUTS; i++){
-        digitalInputs[i].digitalPin = digitalPins[i];
-        digitalInputs[i].letter = KEY_UP_ARROW;
+    // init force inputs:
+    // for(int i = 0; i< NUM_FORCE_INPUTS; i++){
+    //     pinMode(forcePins[i], INPUT_PULLUP);
+    // }
+    for(int i = 0; i < NUM_FORCE_INPUTS; i++){
+        forceInputs[i].analogPin = forcePins[i];
+        forceInputs[i].letter = KEY_UP_ARROW;
     }
 
     // init capacative inputs:
@@ -84,19 +86,19 @@ void setup() {
 }
 
 // update the keystrokes to match the state of the inputs
-void updateDigitalKeystrokes(){
+void updateForceKeystrokes(){
     // for each key, press or release keys based on whether the pin is active or not
-    for(int i = 0; i < NUM_DIGITAL_INPUTS; i++){
+    for(int i = 0; i < NUM_FORCE_INPUTS; i++){
         // if the state of this input hasn't changed from the previous iteration, it doesn't need an update.
-        if(digitalInputs[i].stateNeedsUpdate){
+        if(forceInputs[i].stateNeedsUpdate){
             // the logic for jumping is inverted; we want to jump when the key is released, not when it's pressed
-            if(!digitalInputs[i].isActive){
-                bleKeyboard.press(digitalInputs[i].letter);
+            if(!forceInputs[i].isActive){
+                bleKeyboard.press(forceInputs[i].letter);
             }else{
-                bleKeyboard.release(digitalInputs[i].letter);
+                bleKeyboard.release(forceInputs[i].letter);
             }
             // now the state of the pin and the state of the keyboard output are correctly synced. No updates are needed for this input
-            digitalInputs[i].stateNeedsUpdate = false;
+            forceInputs[i].stateNeedsUpdate = false;
         }
     }
 }
@@ -120,19 +122,19 @@ void updateTouchKeystrokes(){
 // read from the pins to determine state
 void updateInputs(){
     // update digital inputs
-    for(int i = 0; i < NUM_DIGITAL_INPUTS; i++){
+    for(int i = 0; i < NUM_FORCE_INPUTS; i++){
         // if the current reading of the pin does not match the current "active" state in storage, then mark this input as needing an update
-        if(digitalInputs[i].isActive && digitalRead(digitalInputs[i].digitalPin) == HIGH ){
+        if(forceInputs[i].isActive && analogRead(forceInputs[i].analogPin) < FORCE_RELEASE_THRESHOLD){
             // this means that a key is being pressed, but the pin has stopped receiving electricity. The input and output are out of sync and need an update.
-            digitalInputs[i].isActive = false;
-            digitalInputs[i].stateNeedsUpdate = true;
-            updateDigitalKeystrokes();
+            forceInputs[i].isActive = false;
+            forceInputs[i].stateNeedsUpdate = true;
+            updateForceKeystrokes();
         }
-        if(!digitalInputs[i].isActive && digitalRead(digitalInputs[i].digitalPin) == LOW){
+        if(!forceInputs[i].isActive && analogRead(forceInputs[i].analogPin > FORCE_PRESS_THRESHOLD)){
             // this means that no key is currently being pressed, but the pin has started receiving electricity. The input and output are out of sync and need an update.
-            digitalInputs[i].isActive = true;
-            digitalInputs[i].stateNeedsUpdate = true;
-            updateDigitalKeystrokes();
+            forceInputs[i].isActive = true;
+            forceInputs[i].stateNeedsUpdate = true;
+            updateForceKeystrokes();
         }
     }
 
@@ -155,10 +157,13 @@ void updateInputs(){
 
 void loop() {
     // no need to do anything if the keyboard is not currently connected to a device
-    if(bleKeyboard.isConnected()){
-        digitalWrite(BUILTIN_LED, HIGH);
-        updateInputs();
-    }else{
-        digitalWrite(BUILTIN_LED, LOW);
-    }
+    // if(bleKeyboard.isConnected()){
+    //     digitalWrite(BUILTIN_LED, HIGH);
+    //     updateInputs();
+    // }else{
+    //     digitalWrite(BUILTIN_LED, LOW);
+    // }
+
+    Serial.println(analogRead(13));
+    delay(150);
 }
